@@ -1,32 +1,37 @@
 # nextcloud
 
 ### Install packages
-apt update 
-apt upgrade
+apt update   
+apt upgrade  
+```sh
 apt install \
 apt-transport-https bash-completion bzip2 ca-certificates cron curl dialog \
 dirmngr ffmpeg ghostscript git gpg gnupg gnupg2 htop jq libfile-fcntllock-perl \
 libfontconfig1 libfuse2 locate lsb-release net-tools rsyslog screen smbclient \
 socat software-properties-common ssl-cert tree ubuntu-keyring unzip wget zip
-systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-reboot now
-mkdir -p /var/www /var/nc_data
-chown -R www-data:www-data /var/nc_data /var/www
+```
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target  
+reboot now  
+mkdir -p /var/www /var/nc_data  
+chown -R www-data:www-data /var/nc_data /var/www  
 
 ### Install MariaDB
+```sh
 wget -O- https://mariadb.org/mariadb_release_signing_key.asc \
      | gpg --dearmor | sudo tee /usr/share/keyrings/mariadb-keyring.gpg >/dev/null
 echo "deb [signed-by=/usr/share/keyrings/mariadb-keyring.gpg] \
      https://mirror.kumi.systems/mariadb/repo/10.8/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mariadb.list
-apt update && apt install -y mariadb-server
+```
+apt update  
+apt install mariadb-server  
 
-mysql_secure_installation
+mysql_secure_installation  
 
-service mariadb stop
-mv /etc/mysql/my.cnf /etc/mysql/my.cnf.bak
+service mariadb stop  
+mv /etc/mysql/my.cnf /etc/mysql/my.cnf.bak  
 
-nano /etc/mysql/my.cnf
-
+nano /etc/mysql/my.cnf  
+```sh
 [client]
 default-character-set = utf8mb4
 port = 3306
@@ -102,18 +107,20 @@ quick
 quote-names
 [isamchk]
 key_buffer = 16M
-
+```
 service mariadb restart
+```sh
 mysql -uroot -p -e "CREATE DATABASE nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; CREATE USER nextcloud@localhost identified by 'nextcloud'; GRANT ALL PRIVILEGES on nextcloud.* to nextcloud@localhost; FLUSH privileges;"
+```
 
 ### Redis and PHP8.1 Install
-
+```sh
 apt install redis-server redis-server libapache2-mod-php8.1 php-common \
 php8.1-{fpm,gd,curl,xml,zip,intl,mbstring,bz2,ldap,apcu,bcmath,gmp,imagick,igbinary,mysql,redis,smbclient,cli,common,opcache,readline} \
 imagemagick --allow-change-held-packages
-
+```
 timedatectl set-timezone NewYork/USA
-
+```sh
 cp /etc/php/8.1/fpm/pool.d/www.conf /etc/php/8.1/fpm/pool.d/www.conf.bak
 cp /etc/php/8.1/fpm/php-fpm.conf /etc/php/8.1/fpm/php-fpm.conf.bak
 cp /etc/php/8.1/cli/php.ini /etc/php/8.1/cli/php.ini.bak
@@ -121,15 +128,17 @@ cp /etc/php/8.1/fpm/php.ini /etc/php/8.1/fpm/php.ini.bak
 cp /etc/php/8.1/fpm/php-fpm.conf /etc/php/8.1/fpm/php-fpm.conf.bak
 cp /etc/php/8.1/mods-available/apcu.ini /etc/php/8.1/mods-available/apcu.ini.bak
 cp /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml.bak
-
+```
 ### set variables according to memory and cpu cores available
+```sh
 AvailableRAM=$(awk '/MemAvailable/ {printf "%d", $2/1024}' /proc/meminfo)
 AverageFPM=$(ps --no-headers -o 'rss,cmd' -C php-fpm8.1 | awk '{ sum+=$1 } END { printf ("%d\n", sum/NR/1024,"M") }')
 FPMS=$((AvailableRAM/AverageFPM))
 PMaxSS=$((FPMS*2/3))
 PMinSS=$((PMaxSS/2))
 PStartS=$(((PMaxSS+PMinSS)/2))
-
+```
+```sh
 sed -i "s/;env\[HOSTNAME\] = /env[HOSTNAME] = /" /etc/php/8.1/fpm/pool.d/www.conf
 sed -i "s/;env\[TMP\] = /env[TMP] = /" /etc/php/8.1/fpm/pool.d/www.conf
 sed -i "s/;env\[TMPDIR\] = /env[TMPDIR] = /" /etc/php/8.1/fpm/pool.d/www.conf
@@ -142,7 +151,8 @@ sed -i 's/pm.max_spare_servers =.*/pm.max_spare_servers = '$PMaxSS'/' /etc/php/8
 sed -i "s/;pm.max_requests =.*/pm.max_requests = 1000/" /etc/php/8.1/fpm/pool.d/www.conf
 sed -i "s/allow_url_fopen =.*/allow_url_fopen = 1/" /etc/php/8.1/fpm/php.ini
 sed -i "s/;cgi.fix_pathinfo.*/cgi.fix_pathinfo=1/" /etc/php/8.1/fpm/php.ini
-
+```
+```sh
 sed -i "s/output_buffering =.*/output_buffering = 'Off'/" /etc/php/8.1/cli/php.ini
 sed -i "s/max_execution_time =.*/max_execution_time = 3600/" /etc/php/8.1/cli/php.ini
 sed -i "s/max_input_time =.*/max_input_time = 3600/" /etc/php/8.1/cli/php.ini
@@ -150,7 +160,8 @@ sed -i "s/post_max_size =.*/post_max_size = 10240M/" /etc/php/8.1/cli/php.ini
 sed -i "s/upload_max_filesize =.*/upload_max_filesize = 10240M/" /etc/php/8.1/cli/php.ini
 sed -i "s/;date.timezone.*/date.timezone = Europe\/\Berlin/" /etc/php/8.1/cli/php.ini
 sed -i "s/;cgi.fix_pathinfo.*/cgi.fix_pathinfo=1/" /etc/php/8.1/cli/php.ini
-
+```
+```sh
 sed -i "s/memory_limit = 128M/memory_limit = 1024M/" /etc/php/8.1/fpm/php.ini
 sed -i "s/output_buffering =.*/output_buffering = 'Off'/" /etc/php/8.1/fpm/php.ini
 sed -i "s/max_execution_time =.*/max_execution_time = 3600/" /etc/php/8.1/fpm/php.ini
@@ -166,7 +177,8 @@ sed -i "s/;opcache.interned_strings_buffer=.*/opcache.interned_strings_buffer=16
 sed -i "s/;opcache.max_accelerated_files=.*/opcache.max_accelerated_files=10000/" /etc/php/8.1/fpm/php.ini
 sed -i "s/;opcache.revalidate_freq=.*/opcache.revalidate_freq=1/" /etc/php/8.1/fpm/php.ini
 sed -i "s/;opcache.save_comments=.*/opcache.save_comments=1/" /etc/php/8.1/fpm/php.ini
-
+```
+```sh
 sed -i "s|;emergency_restart_threshold.*|emergency_restart_threshold = 10|g" /etc/php/8.1/fpm/php-fpm.conf
 sed -i "s|;emergency_restart_interval.*|emergency_restart_interval = 1m|g" /etc/php/8.1/fpm/php-fpm.conf
 sed -i "s|;process_control_timeout.*|process_control_timeout = 10|g" /etc/php/8.1/fpm/php-fpm.conf
@@ -177,23 +189,27 @@ sed -i "s/rights=\"none\" pattern=\"PS\"/rights=\"read|write\" pattern=\"PS\"/" 
 sed -i "s/rights=\"none\" pattern=\"EPS\"/rights=\"read|write\" pattern=\"EPS\"/" /etc/ImageMagick-6/policy.xml
 sed -i "s/rights=\"none\" pattern=\"PDF\"/rights=\"read|write\" pattern=\"PDF\"/" /etc/ImageMagick-6/policy.xml
 sed -i "s/rights=\"none\" pattern=\"XPS\"/rights=\"read|write\" pattern=\"XPS\"/" /etc/ImageMagick-6/policy.xml
-
+```
+```sh
 systemctl restart php8.1-fpm
-a2dismod php8.1 && a2dismod mpm_prefork
+a2dismod php8.1
+a2dismod mpm_prefork
 a2enmod proxy_fcgi setenvif mpm_event http2
 systemctl restart apache2.service
 a2enconf php8.1-fpm
 systemctl restart apache2.service php8.1-fpm
+```
 
 ### Nextcloud download
-
+```sh
 wget https://download.nextcloud.com/server/releases/latest.zip
 unzip latest.zip
 mv nextcloud/ /var/www/html/
 chown -R www-data:www-data /var/www/html/nextcloud
+```
 
 ### Redis configuration
-
+```
 cp /etc/redis/redis.conf /etc/redis/redis.conf.bak
 sed -i "s/port 6379/port 0/" /etc/redis/redis.conf
 sed -i s/\#\ unixsocket/\unixsocket/g /etc/redis/redis.conf
@@ -203,21 +219,27 @@ usermod -aG redis www-data
 cp /etc/sysctl.conf /etc/sysctl.conf.bak
 sed -i '$avm.overcommit_memory = 1' /etc/sysctl.conf
 reboot now
+```
 
 ### apache2 configuration
+```sh
 a2enmod rewrite headers env dir mime
+```
 nano /etc/apache2/mods-available/http2.conf
+```sh
 # mod_http2 doesn't work with mpm_prefork
 <IfModule !mpm_prefork>
 Protocols h2 h2c http/1.1
 H2Direct on
 H2StreamMaxMemSize 5120000000
 [...]
-systemctl restart apache2.service
-cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/001-nextcloud.conf
+```
+systemctl restart apache2.service  
+cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/001-nextcloud.conf  
 a2dissite 000-default.conf
+```
 nano /etc/apache2/sites-available/001-nextcloud.conf
-
+```sh
 <VirtualHost *:80>
 ServerName ihre.domain.de
 ServerAlias ihre.domain.de
@@ -229,13 +251,17 @@ RewriteEngine on
 RewriteCond %{SERVER_NAME} =ihre.domain.de
 RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
 </VirtualHost>
+```
 
-a2ensite 001-nextcloud.conf && systemctl restart apache2.service
+a2ensite 001-nextcloud.conf
+systemctl restart apache2.service
 
 tls certs via acme.sh lexicon dns
 
 mv /etc/apache2/sites-available/001-nextcloud-le-ssl.conf /etc/apache2/sites-available/001-nextcloud-le-ssl.conf.bak
+
 nano /etc/apache2/sites-available/001-nextcloud-le-ssl.conf
+```sh
 <IfModule mod_ssl.c>
 SSLUseStapling on
 SSLStaplingCache shmcb:/var/run/ocsp(128000)
@@ -291,12 +317,12 @@ RequestReadTimeout body=0
 </IfModule>
 </VirtualHost>
 </IfModule>
-
-openssl dhparam -dsaparam -out /etc/ssl/certs/dhparam.pem 4096
-cat /etc/ssl/certs/dhparam.pem >> /etc/letsencrypt/live/ihre.domain.de/fullchain.pem
+```
+openssl dhparam -dsaparam -out /etc/ssl/certs/dhparam.pem 4096  
+cat /etc/ssl/certs/dhparam.pem >> /etc/letsencrypt/live/ihre.domain.de/fullchain.pem  
 
 nano /etc/apache2/apache2.conf
-
+```sh
 ServerName ihre.domain.de
 [...]
 <Directory /var/www/>
@@ -304,14 +330,17 @@ Options FollowSymLinks MultiViews
 AllowOverride All
 Require all granted
 </Directory>
-systemctl restart apache2.service
+```
+systemctl restart apache2.service  
 
 ### nextcloud configuration
-
+```sh
 sudo -u www-data php /var/www/html/nextcloud/occ maintenance:install --database "mysql" --database-name "nextcloud" --database-user "nextcloud" --database-pass "nextcloud" --admin-user "Nextcloud-Admin" --admin-pass "Nextcloud-Admin-Passswort" --data-dir "/var/nc_data"
+```
 config.php korrigieren – fügen Sie die Zeilen hinzu:
-sudo -u www-data nano /var/www/html/nextcloud/config/config.php
 
+sudo -u www-data nano /var/www/html/nextcloud/config/config.php
+```sh
 [...]
 ),
 'datadirectory' => '/var/nc_data',
@@ -326,6 +355,8 @@ chown -R www-data:www-data /var/log/nextcloud
 sudo -u www-data cp /var/www/html/nextcloud/config/config.php /var/www/html/nextcloud/config/config.php.bak
 sudo -u www-data sed -i 's/^[ ]*//' /var/www/html/nextcloud/config/config.php
 sudo -u www-data sed -i '/);/d' /var/www/html/nextcloud/config/config.php
+```
+```sh
 sudo -u www-data cat <<EOF >>/var/www/html/nextcloud/config/config.php
 'activity_expire_days' => 14,
 'allow_local_remote_servers' => true,
@@ -386,16 +417,24 @@ array (
 'updater.release.channel' => 'stable',
 );
 EOF
+```
+```sh
 sudo -u www-data php /var/www/html/nextcloud occ config:system:set remember_login_cookie_lifetime --value="1800"
 sudo -u www-data php /var/www/html/nextcloud occ config:system:set simpleSignUpLink.shown --type=bool --value=false
 sudo -u www-data php /var/www/html/nextcloud occ config:system:set versions_retention_obligation --value="auto, 365"
 sudo -u www-data php /var/www/html/nextcloud occ config:system:set loglevel --value=2
 sudo -u www-data php /var/www/html/nextcloud/occ config:system:set trusted_domains 1 --value=ihre.domain.de
 sudo -u www-data php /var/www/html/nextcloud/occ config:app:set settings profile_enabled_by_default --value="0"
-Optional Nextcloud Office (bitte haben Sie Geduld – Download von ca. ~ 400MB):
+
+### Optional Nextcloud Office (bitte haben Sie Geduld – Download von ca. ~ 400MB):
+```sh
 sudo -u www-data /usr/bin/php /var/www/html/nextcloud/occ app:install richdocuments
 sudo -u www-data /usr/bin/php /var/www/html/nextcloud/occ app:install richdocumentscode
-a2enmod ssl && a2ensite 001-nextcloud.conf 001-nextcloud-le-ssl.conf
+```
+```sh
+a2enmod ssl
+a2ensite 001-nextcloud.conf 001-nextcloud-le-ssl.conf
+```
 systemctl restart php8.1-fpm.service redis-server.service apache2.service
 
 ### Cronjob
@@ -406,6 +445,7 @@ crontab -u www-data -e
 sudo -u www-data php /var/www/html/nextcloud/occ background:cron
 
 ### security
+```sh
 a2dismod status
 nano /etc/apache2/conf-available/security.conf
 [...]
@@ -416,9 +456,10 @@ ServerSignature Off
 TraceEnable Off
 [...]
 systemctl restart php8.1-fpm.service redis-server.service apache2.service
+```
 
 ### fail2ban install
-
+```
 apt install -y fail2ban ufw
 touch /etc/fail2ban/filter.d/nextcloud.conf
 cat <<EOF >/etc/fail2ban/filter.d/nextcloud.conf
@@ -428,9 +469,10 @@ failregex = ^\{%(_groupsre)s,?\s*"remoteAddr":"<HOST>"%(_groupsre)s,?\s*"message
             ^\{%(_groupsre)s,?\s*"remoteAddr":"<HOST>"%(_groupsre)s,?\s*"message":"Trusted domain error.
 datepattern = ,?\s*"time"\s*:\s*"%%Y-%%m-%%d[T ]%%H:%%M:%%S(%%z)?"
 EOF
+```
 
-nano /etc/fail2ban/jail.d/nextcloud.local
-
+nano /etc/fail2ban/jail.d/nextcloud.local  
+```sh
 [nextcloud]
 backend = auto
 enabled = true
@@ -442,5 +484,6 @@ bantime = 3600
 findtime = 36000
 logpath = /var/log/nextcloud/nextcloud.log
 service fail2ban restart
+```
 
 ### iptables and ipset block lists
