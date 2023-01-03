@@ -1,4 +1,4 @@
-### Redis and PHP8.1 install
+### PHP8.1 and redis install
 ```sh
 apt install redis-server redis-server libapache2-mod-php8.1 php-common \
 php8.1-{fpm,gd,curl,xml,zip,intl,mbstring,bz2,ldap,apcu,bcmath,gmp,imagick,igbinary,mysql,redis,smbclient,cli,common,opcache,readline} \
